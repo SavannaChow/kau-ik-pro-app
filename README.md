@@ -97,10 +97,10 @@ React 前端 ── HTTP REST + SSE ──► server/（Fastify）
 | `nova` 台新 Nova | ✅ | ❌（前端自動隱藏期權下單 UI） | 身分證字號＋密碼＋憑證 .p12 | 已實作（依 taishin-sdk 1.0.2 + 官方文件查證，含實單下單/刪單驗證） |
 | `esun` 玉山 | ✅ | ❌（前端自動隱藏期權下單 UI） | 帳號＋密碼＋API Key/Secret＋憑證 .p12 | 已實作（依 @esun/trade 2.2.0 typings 查證；登入/查詢/行情已實測，下單待實單驗證） |
 
-**券商熱切換**：表頭「券商」選單可在 mock / 富邦 / 台新 間直接切換，
+**券商熱切換**：表頭「券商」選單可在 mock / 富邦 / 台新 / 玉山間直接切換，
 免重啟 server。憑證來源（擇一）：環境變數（`FUBON_*` / `NOVA_*`，見
-`.env.example`）、或在選單表單輸入一次（存到 gitignored
-`server/data/config.json`，權限 600）。切換到券商後**行情自動改用該券商
+`.env.example`）、桌面版系統安全儲存，或 Docker 網頁版以
+`KAUIK_SECRET_KEY` 加密後存進持久化資料夾。切換到券商後**行情自動改用該券商
 SDK 自帶的行情**（富邦/台新行情 API，免富果 Key）；切回 mock 則恢復
 「行情」選單的獨立設定（富果 Key 或模擬）。
 
@@ -134,6 +134,76 @@ pnpm dev:all     # 同時啟動 vite 前端 + server（mock 行情與交易）
 
 也可以分開跑：`pnpm dev:server`（後端）+ `pnpm dev`（前端）。
 
+## Synology Docker 網頁版
+
+網頁版提供與桌面版相同的 React 介面、REST/SSE 行情、模擬交易、券商切換、
+自選清單與伺服器觸價引擎。容器只開一個連接埠，Fastify 同時提供編譯後的
+前端與 API。預設仍是安全的 mock 模式。
+
+持久化分成兩層：
+
+- `./docker-data:/app/data` 保存自選清單、觸價單、行情來源及加密後的券商登入資料；重建或更新容器不會消失。
+- 版面、主題、音效、圖表偏好等 UI 設定存在瀏覽器 localStorage；同一瀏覽器重新整理或重建容器仍會保留，但不同電腦／瀏覽器不會自動共用。
+- 券商憑證放在 `./certificates`，以唯讀方式掛載。網頁表單中的路徑請填 `/app/certificates/你的檔名.p12`（或 `.pfx`）。
+
+### 在 `/volume1/docker/` 安裝
+
+先在 Synology 安裝 Container Manager，開啟 SSH 後執行：
+
+```sh
+cd /volume1/docker
+git clone https://github.com/howwayla/kau-ik-pro-app.git
+cd kau-ik-pro-app
+mkdir -p docker-data certificates
+cp .env.synology.example .env
+id
+openssl rand -hex 32
+```
+
+把 `id` 顯示的 uid/gid 填到 `.env` 的 `PUID` / `PGID`，設定一組長的
+`KAUIK_WEB_PASSWORD`，並把 `openssl` 產生的 64 字元結果填入
+`KAUIK_SECRET_KEY`。這把密鑰之後不要更換；它不應提交到 Git。確認資料夾可由
+該 uid/gid 寫入，再建立容器：
+
+```sh
+docker compose -f compose.synology.yaml up -d --build
+docker compose -f compose.synology.yaml ps
+docker compose -f compose.synology.yaml logs -f --tail=100
+```
+
+若你的 DSM 只提供圖形介面：Container Manager →「專案」→「新增」→ 路徑選
+`/volume1/docker/kau-ik-pro-app`，Compose 檔選 `compose.synology.yaml`，建立並
+啟動專案。
+
+完成後開啟 [http://10.98.42.118:8080](http://10.98.42.118:8080)，瀏覽器會先
+要求輸入 `.env` 中的網頁帳號密碼。頁面頂端應顯示「模擬環境」。不要把 8080
+直接轉發到網際網路；需要外網存取時請使用 Synology VPN 或有 HTTPS 與額外驗證
+的反向代理。
+
+### 兆豐證券（Windows VM Bridge）
+
+兆豐官方 Python API 依賴 Windows DLL，無法直接放進 Synology Linux 容器。
+本專案因此使用：`Synology Docker → Windows VM Bridge → 兆豐 API`。先依
+[`mega-bridge/README.md`](mega-bridge/README.md) 在 Windows VM 安裝 Bridge，
+並將 Windows 防火牆 TCP 8787 的來源限制為 Synology `10.98.42.118`。
+
+接著在網頁先到「行情」連接富果，再到「券商」選擇「兆豐」，填入登入資料、
+Windows VM 內的 PFX 路徑、Bridge URL（例如 `http://10.98.42.120:8787`）與
+Bridge Token。兆豐選項會拒絕在 mock 行情下啟用，以免模擬價格送出真實委託。
+兆豐憑證不需也不應複製進 Docker。
+
+### 更新與備份
+
+```sh
+cd /volume1/docker/kau-ik-pro-app
+git pull --ff-only
+docker compose -f compose.synology.yaml up -d --build
+```
+
+更新前備份 `.env`、`docker-data/` 與 `certificates/`。不要執行
+`docker compose down -v`；本設定使用 bind mount，正常 `down` / `up` 或重建映像
+不會清除資料。健康檢查網址是 `/api/v1/health`。
+
 ### 3. 接真實券商 / 行情
 
 券商 SDK（taishin-sdk / fubon-neo / @esun/trade）**已隨 repo 提供**，
@@ -144,13 +214,14 @@ pnpm dev:all     # 同時啟動 vite 前端 + server（mock 行情與交易）
 1. **行情**：表頭「行情」選單 → 貼上[富果 API key](https://developer.fugle.tw/)
    →「連接富果行情」（注意各方案的 WS 訂閱數與 REST rate limit；期權行情
    需方案支援，403 自動降級）
-2. **券商**：表頭「券商」選單 → 選富邦/台新/玉山 → 填一次憑證資料
+2. **券商**：表頭「券商」選單 → 選富邦/台新/玉山/兆豐 → 填一次憑證資料
    （存到 gitignored `server/data/config.json`，權限 600）→ 切換後
    行情自動跟隨該券商自帶的行情 SDK
 
 **進階 — 環境變數**（適合無頭部署，見 `.env.example`）：
-`FUBON_ID_NO/FUBON_PASSWORD/FUBON_CERT_PATH/...`、`NOVA_*`、`ESUN_*`，
-搭配 `TRADE_PROVIDER=fubon|nova|esun`。
+`FUBON_ID_NO/FUBON_PASSWORD/FUBON_CERT_PATH/...`、`NOVA_*`、`ESUN_*`、
+`MEGA_*`，搭配 `TRADE_PROVIDER=fubon|nova|esun|mega`。兆豐仍需 Windows
+Bridge，且建議先由網頁完成富果行情設定。
 
 > ⚠️ 接上真實券商後，每一筆委託都是真實交易。富邦/台新的下單、刪改單
 > 已經過實單驗證；玉山下單與**富邦券商端條件單（停損停利二合一）**尚未

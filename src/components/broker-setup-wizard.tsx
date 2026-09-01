@@ -45,7 +45,7 @@ export interface BrokerSetupWizardProps {
     onClose: () => void;
 }
 
-const BROKER_CHOICES: BrokerName[] = ['fubon', 'nova', 'esun'];
+const BROKER_CHOICES: BrokerName[] = ['fubon', 'nova', 'esun', 'mega'];
 const STEP_LABELS = ['選券商', '填寫登入資訊', '檢查並登入'] as const;
 const TITLE_ID = 'broker-setup-wizard-title';
 
@@ -189,6 +189,9 @@ export function BrokerSetupWizard({
                       cert_path: form.certPath,
                       cert_pass: form.certPass,
                       api_url: form.apiUrl,
+                      account: form.account,
+                      branch_id: form.branchId,
+                      bridge_token: form.bridgeToken,
                   });
             liveSwitchSucceeded = true;
 
@@ -397,13 +400,19 @@ export function BrokerSetupWizard({
                                                     className={
                                                         styles.secondaryButton
                                                     }
-                                                    disabled={busy}
+                                                    disabled={
+                                                        busy || !isTauri
+                                                    }
                                                     type='button'
                                                     onClick={() =>
                                                         void chooseCertificate()
                                                     }
                                                 >
-                                                    選擇檔案
+                                                    {isTauri
+                                                        ? '選擇檔案'
+                                                        : broker === 'mega'
+                                                          ? 'Windows VM 路徑'
+                                                        : '請輸入 NAS 路徑'}
                                                 </button>
                                             </div>
                                         ) : (
@@ -427,7 +436,11 @@ export function BrokerSetupWizard({
                                 ))}
                             </div>
                             <p className={styles.hint}>
-                                登入資訊會存到系統安全儲存；設定檔只保存憑證檔位置等非敏感資料。
+                                {broker === 'mega'
+                                    ? '兆豐官方元件只支援 Windows；憑證路徑要填 Windows VM 上的完整 .pfx 路徑，Bridge URL 與 Token 需和 VM 設定一致。登入後行情沿用已設定的富果來源。'
+                                    : isTauri
+                                    ? '登入資訊會存到系統安全儲存；設定檔只保存憑證檔位置等非敏感資料。'
+                                    : 'Docker 網頁版請先把憑證放進 NAS 的 certificates 資料夾，路徑輸入 /app/certificates/檔名；登入資訊會以 KAUIK_SECRET_KEY 加密後保存。'}
                             </p>
                         </>
                     )}

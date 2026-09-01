@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.DS_Store
+.env
+.env.*.local
+node_modules
+dist
+src-tauri/target
+src-tauri/binaries
+server/data
+server/log
+docker-data
+certificates
+*.log

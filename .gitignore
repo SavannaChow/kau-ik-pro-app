@@ -12,6 +12,12 @@ dist/
 # Logs
 *.log
 
+# Local handoff artifacts
+*.zip
+@command_history.txt
+__pycache__/
+*.pyc
+
 # OS / Editor
 .DS_Store
 .vscode/

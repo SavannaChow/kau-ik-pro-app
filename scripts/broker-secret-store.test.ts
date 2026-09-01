@@ -19,6 +19,9 @@ const form: BrokerSetupForm = {
     certPath: '/private/certs/nova.p12',
     certPass: 'cert-pass',
     apiUrl: 'https://broker.example.test',
+    account: '1234567',
+    branchId: '1234',
+    bridgeToken: 'bridge-token',
 };
 
 function recorder(
@@ -60,6 +63,9 @@ test('saveBrokerSecretsWithInvoke sends only secret fields to Tauri', async () =
                     apiKey: 'api-key',
                     apiSecret: 'api-secret',
                     certPass: 'cert-pass',
+                    account: '1234567',
+                    branchId: '1234',
+                    bridgeToken: 'bridge-token',
                 },
             },
         },
@@ -169,6 +175,9 @@ test('freshLoginBrokerWithInvoke sends form metadata and secrets to the authed c
                     apiKey: 'api-key',
                     apiSecret: 'api-secret',
                     certPass: 'cert-pass',
+                    account: '1234567',
+                    branchId: '1234',
+                    bridgeToken: 'bridge-token',
                 },
             },
         },

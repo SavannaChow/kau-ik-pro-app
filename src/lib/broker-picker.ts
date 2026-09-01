@@ -55,7 +55,7 @@ export function effectiveBrokerAvailability({
 export function savedBrokerNames(
     creds: TradeConfig['creds'] | undefined,
 ): BrokerName[] {
-    return (['fubon', 'nova', 'esun'] as const).filter((broker) => {
+    return (['fubon', 'nova', 'esun', 'mega'] as const).filter((broker) => {
         const availability = creds?.[broker];
         return Boolean(availability?.saved || availability?.env);
     });

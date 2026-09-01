@@ -8,6 +8,7 @@
 import {
     credsComplete,
     envBrokerCreds,
+    megaCredsComplete,
     type BrokerCreds,
     type BrokerName,
     type Config,
@@ -29,7 +30,9 @@ export function resolveBrokerCreds(
     const saved = runtimeConfig.get().brokerCreds[name];
     const env = envBrokerCreds(name) ?? bootEnvBroker;
     // explicit fields overlay the best stored/env base
-    const base = credsComplete(saved) ? saved! : (env ?? null);
+    const savedComplete =
+        name === 'mega' ? megaCredsComplete(saved) : credsComplete(saved);
+    const base = savedComplete ? saved! : (env ?? null);
     const merged: BrokerCreds = {
         idNo: explicit?.idNo || base?.idNo || '',
         password: explicit?.password || base?.password || '',
@@ -38,8 +41,13 @@ export function resolveBrokerCreds(
         certPath: explicit?.certPath || base?.certPath || '',
         certPass: explicit?.certPass || base?.certPass || '',
         apiUrl: explicit?.apiUrl || base?.apiUrl || '',
+        account: explicit?.account || base?.account || '',
+        branchId: explicit?.branchId || base?.branchId || '',
+        bridgeToken: explicit?.bridgeToken || base?.bridgeToken || '',
     };
-    return credsComplete(merged) ? merged : null;
+    return (name === 'mega' ? megaCredsComplete(merged) : credsComplete(merged))
+        ? merged
+        : null;
 }
 
 export async function buildTradingProvider(
@@ -69,6 +77,12 @@ export async function buildTradingProvider(
         );
         return new NovaTradingProvider(brokerConfig);
     }
+    if (name === 'mega') {
+        const { MegaTradingProvider } = await import(
+            './providers/mega/trading.ts'
+        );
+        return new MegaTradingProvider(brokerConfig);
+    }
     const { EsunTradingProvider } = await import(
         './providers/esun/trading.ts'
     );
@@ -76,7 +90,7 @@ export async function buildTradingProvider(
 }
 
 export interface MarketSwitchResult {
-    name: 'mock' | 'fugle' | 'fubon' | 'nova' | 'esun';
+    name: 'mock' | 'fugle' | 'fubon' | 'nova' | 'esun' | 'mega';
     warning?: string;
 }
 

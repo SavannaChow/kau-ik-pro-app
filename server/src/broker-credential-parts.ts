@@ -4,7 +4,14 @@ export type BrokerMetadata = Pick<BrokerCreds, 'certPath' | 'apiUrl'>;
 
 export type BrokerSecrets = Pick<
     BrokerCreds,
-    'idNo' | 'password' | 'apiKey' | 'apiSecret' | 'certPass'
+    | 'idNo'
+    | 'password'
+    | 'apiKey'
+    | 'apiSecret'
+    | 'certPass'
+    | 'account'
+    | 'branchId'
+    | 'bridgeToken'
 >;
 
 export function splitBrokerCreds(creds: BrokerCreds): {
@@ -22,6 +29,9 @@ export function splitBrokerCreds(creds: BrokerCreds): {
             apiKey: creds.apiKey,
             apiSecret: creds.apiSecret,
             certPass: creds.certPass,
+            account: creds.account,
+            branchId: creds.branchId,
+            bridgeToken: creds.bridgeToken,
         },
     };
 }
@@ -39,5 +49,8 @@ export function assembleBrokerCreds(
         certPath: metadata?.certPath ?? '',
         certPass: secrets.certPass ?? '',
         apiUrl: metadata?.apiUrl ?? '',
+        account: secrets.account ?? '',
+        branchId: secrets.branchId ?? '',
+        bridgeToken: secrets.bridgeToken ?? '',
     };
 }

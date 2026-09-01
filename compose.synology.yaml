@@ -1,0 +1,54 @@
+services:
+  kauik-pro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kauik-pro:local
+    container_name: kauik-pro
+    restart: unless-stopped
+    init: true
+    user: "${PUID:-1026}:${PGID:-100}"
+    ports:
+      - "${KAUIK_PORT:-8080}:8080"
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      KAUIK_HOST: 0.0.0.0
+      KAUIK_DATA_DIR: /app/data
+      KAUIK_WEB_USERNAME: "${KAUIK_WEB_USERNAME:-admin}"
+      KAUIK_WEB_PASSWORD: "${KAUIK_WEB_PASSWORD:?Set KAUIK_WEB_PASSWORD in .env}"
+      KAUIK_SECRET_KEY: "${KAUIK_SECRET_KEY:?Set KAUIK_SECRET_KEY in .env}"
+      MARKET_PROVIDER: "${MARKET_PROVIDER:-mock}"
+      TRADE_PROVIDER: "${TRADE_PROVIDER:-mock}"
+      FUGLE_API_KEY: "${FUGLE_API_KEY:-}"
+      FUBON_ID_NO: "${FUBON_ID_NO:-}"
+      FUBON_PASSWORD: "${FUBON_PASSWORD:-}"
+      FUBON_API_KEY: "${FUBON_API_KEY:-}"
+      FUBON_CERT_PATH: "${FUBON_CERT_PATH:-}"
+      FUBON_CERT_PASS: "${FUBON_CERT_PASS:-}"
+      NOVA_ID_NO: "${NOVA_ID_NO:-}"
+      NOVA_PASSWORD: "${NOVA_PASSWORD:-}"
+      NOVA_CERT_PATH: "${NOVA_CERT_PATH:-}"
+      NOVA_CERT_PASS: "${NOVA_CERT_PASS:-}"
+      NOVA_API_URL: "${NOVA_API_URL:-}"
+      ESUN_ACCOUNT: "${ESUN_ACCOUNT:-}"
+      ESUN_PASSWORD: "${ESUN_PASSWORD:-}"
+      ESUN_API_KEY: "${ESUN_API_KEY:-}"
+      ESUN_API_SECRET: "${ESUN_API_SECRET:-}"
+      ESUN_CERT_PATH: "${ESUN_CERT_PATH:-}"
+      ESUN_CERT_PASS: "${ESUN_CERT_PASS:-}"
+      ESUN_API_URL: "${ESUN_API_URL:-}"
+      MEGA_ID_NO: "${MEGA_ID_NO:-}"
+      MEGA_PASSWORD: "${MEGA_PASSWORD:-}"
+      MEGA_ACCOUNT: "${MEGA_ACCOUNT:-}"
+      MEGA_BRANCH_ID: "${MEGA_BRANCH_ID:-}"
+      MEGA_CERT_PATH: "${MEGA_CERT_PATH:-}"
+      MEGA_CERT_PASS: "${MEGA_CERT_PASS:-}"
+      MEGA_BRIDGE_URL: "${MEGA_BRIDGE_URL:-}"
+      MEGA_BRIDGE_TOKEN: "${MEGA_BRIDGE_TOKEN:-}"
+    volumes:
+      - ./docker-data:/app/data
+      - ./certificates:/app/certificates:ro
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 20s

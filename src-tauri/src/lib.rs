@@ -69,6 +69,9 @@ pub struct BrokerSecrets {
     api_key: String,
     api_secret: String,
     cert_pass: String,
+    account: String,
+    branch_id: String,
+    bridge_token: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -88,6 +91,9 @@ struct BrokerSecretLoginRequest<'a> {
     cert_path: &'a str,
     cert_pass: &'a str,
     api_url: &'a str,
+    account: &'a str,
+    branch_id: &'a str,
+    bridge_token: &'a str,
     persist_metadata: bool,
 }
 
@@ -172,6 +178,7 @@ fn broker_secret_account(broker: &str) -> Result<&'static str, String> {
         "fubon" => Ok("fubon:v1"),
         "nova" => Ok("nova:v1"),
         "esun" => Ok("esun:v1"),
+        "mega" => Ok("mega:v1"),
         _ => Err("unsupported broker".to_string()),
     }
 }
@@ -259,6 +266,9 @@ fn broker_secret_login_request<'a>(
         cert_path: &metadata.cert_path,
         cert_pass: &secrets.cert_pass,
         api_url: &metadata.api_url,
+        account: &secrets.account,
+        branch_id: &secrets.branch_id,
+        bridge_token: &secrets.bridge_token,
         persist_metadata: false,
     }
 }
@@ -677,6 +687,7 @@ mod tests {
         assert_eq!(broker_secret_account("fubon").unwrap(), "fubon:v1");
         assert_eq!(broker_secret_account("nova").unwrap(), "nova:v1");
         assert_eq!(broker_secret_account("esun").unwrap(), "esun:v1");
+        assert_eq!(broker_secret_account("mega").unwrap(), "mega:v1");
         assert!(broker_secret_account("sinopac").is_err());
     }
 
@@ -688,6 +699,9 @@ mod tests {
             api_key: "api-key".to_string(),
             api_secret: "api-secret".to_string(),
             cert_pass: "cert-pass".to_string(),
+            account: "0023456".to_string(),
+            branch_id: "1234".to_string(),
+            bridge_token: "bridge-token".to_string(),
         };
 
         let json = broker_secrets_to_json(&secrets).unwrap();
@@ -707,6 +721,9 @@ mod tests {
             api_key: "api-key".to_string(),
             api_secret: "api-secret".to_string(),
             cert_pass: "cert-pass".to_string(),
+            account: "0023456".to_string(),
+            branch_id: "1234".to_string(),
+            bridge_token: "bridge-token".to_string(),
         };
         let metadata = BrokerSecretMetadata {
             cert_path: "/private/certs/nova.p12".to_string(),

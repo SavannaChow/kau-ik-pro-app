@@ -14,6 +14,9 @@ const form: BrokerSetupForm = {
     certPath: '/private/certs/fubon.p12',
     certPass: 'cert-pass',
     apiUrl: 'https://broker.example.test',
+    account: '1234567',
+    branchId: '1234',
+    bridgeToken: 'bridge-token',
 };
 
 test('brokerSecretsFromSetupForm excludes non-secret metadata fields', () => {
@@ -25,6 +28,9 @@ test('brokerSecretsFromSetupForm excludes non-secret metadata fields', () => {
         apiKey: 'api-key',
         apiSecret: 'api-secret',
         certPass: 'cert-pass',
+        account: '1234567',
+        branchId: '1234',
+        bridgeToken: 'bridge-token',
     });
     assert.equal(Object.hasOwn(secrets, 'certPath'), false);
     assert.equal(Object.hasOwn(secrets, 'apiUrl'), false);

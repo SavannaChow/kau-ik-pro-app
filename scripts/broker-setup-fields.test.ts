@@ -17,6 +17,9 @@ function filled(): BrokerSetupForm {
         certPath: '/private/certs/fubon.p12',
         certPass: 'cert-pass',
         apiUrl: '',
+        account: '1234567',
+        branchId: '1234',
+        bridgeToken: 'bridge-token',
     };
 }
 
@@ -41,8 +44,24 @@ test('fieldsForBroker returns esun setup fields in order', () => {
     );
 });
 
+test('fieldsForBroker returns Mega Windows bridge fields in order', () => {
+    assert.deepEqual(
+        fieldsForBroker('mega').map((field) => field.key),
+        [
+            'idNo',
+            'password',
+            'account',
+            'branchId',
+            'certPath',
+            'certPass',
+            'apiUrl',
+            'bridgeToken',
+        ],
+    );
+});
+
 test('fieldsForBroker only returns text or password field types', () => {
-    const brokers = ['fubon', 'nova', 'esun'] as const;
+    const brokers = ['fubon', 'nova', 'esun', 'mega'] as const;
     const fieldTypes = brokers.flatMap((broker) =>
         fieldsForBroker(broker).map((field) => field.type),
     );
@@ -116,5 +135,8 @@ test('emptyBrokerSetupForm returns all setup keys with empty strings', () => {
         certPath: '',
         certPass: '',
         apiUrl: '',
+        account: '',
+        branchId: '',
+        bridgeToken: '',
     });
 });

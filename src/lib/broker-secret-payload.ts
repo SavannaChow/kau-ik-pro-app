@@ -10,6 +10,9 @@ export interface BrokerSetupForm {
     certPath: string;
     certPass: string;
     apiUrl?: string;
+    account: string;
+    branchId: string;
+    bridgeToken: string;
 }
 
 export interface BrokerSecretPayload {
@@ -18,6 +21,9 @@ export interface BrokerSecretPayload {
     apiKey: string;
     apiSecret: string;
     certPass: string;
+    account: string;
+    branchId: string;
+    bridgeToken: string;
 }
 
 export interface BrokerMetadataPayload {
@@ -35,6 +41,9 @@ export function brokerSecretsFromSetupForm(
         apiKey: form.apiKey,
         apiSecret: form.apiSecret,
         certPass: form.certPass,
+        account: form.account,
+        branchId: form.branchId,
+        bridgeToken: form.bridgeToken,
     };
 }
 

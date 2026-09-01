@@ -338,6 +338,7 @@ const BROKER_LABEL: Record<TradeProviderName, string> = {
     fubon: '富邦',
     nova: '台新',
     esun: '玉山',
+    mega: '兆豐',
 };
 
 function BrokerMenu() {
@@ -362,7 +363,7 @@ function BrokerMenu() {
                 setConfig(cfg);
                 if (isTauri) {
                     void Promise.all(
-                        (['fubon', 'nova', 'esun'] as const).map(
+                        (['fubon', 'nova', 'esun', 'mega'] as const).map(
                             async (broker) => {
                                 if (!cfg.creds[broker].saved) {
                                     return [broker, false] as const;
@@ -505,6 +506,11 @@ function BrokerMenu() {
                   canUseSecureStorage: isTauri,
                   secretPresent: secretPresence.esun,
               }) ?? { env: false, saved: false },
+              mega: effectiveBrokerAvailability({
+                  availability: config.creds.mega,
+                  canUseSecureStorage: isTauri,
+                  secretPresent: secretPresence.mega,
+              }) ?? { env: false, saved: false },
           }
         : undefined;
     const reconnectableBrokers = savedBrokerNames(effectiveCreds);
@@ -533,7 +539,7 @@ function BrokerMenu() {
                             </span>
                         )}
                         <div className={styles.settingGroup}>
-                            {(['mock', 'fubon', 'nova', 'esun'] as const).map(
+                            {(['mock', 'fubon', 'nova', 'esun', 'mega'] as const).map(
                                 (p) => (
                                     <button
                                         key={p}
@@ -563,7 +569,7 @@ function BrokerMenu() {
                             設定券商登入
                         </button>
                         {/* 每家券商：即使已有存檔憑證，也可改用其他帳號登入 */}
-                        {(['fubon', 'nova', 'esun'] as const).map((p) => {
+                        {(['fubon', 'nova', 'esun', 'mega'] as const).map((p) => {
                             const avail = config?.creds?.[p];
                             if (!avail?.saved && !avail?.env) return null;
                             return (
@@ -635,6 +641,10 @@ function BrokerMenu() {
                     esun: Boolean(
                         config?.creds?.esun?.saved ||
                             config?.creds?.esun?.env,
+                    ),
+                    mega: Boolean(
+                        config?.creds?.mega?.saved ||
+                            config?.creds?.mega?.env,
                     ),
                 }}
                 onClose={() => setWizardOpen(false)}

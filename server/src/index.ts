@@ -8,7 +8,7 @@
 
 import { join } from 'node:path';
 import { buildApp } from './app.ts';
-import { credsComplete, loadConfig } from './config.ts';
+import { credsComplete, loadConfig, megaCredsComplete } from './config.ts';
 import type { AppContext } from './context.ts';
 import {
     legacyRuntimeConfigFiles,
@@ -40,10 +40,14 @@ async function main(): Promise<void> {
         targetFile: runtimeConfigFile,
         legacyFiles: legacyRuntimeConfigFiles(runtimeConfigFile),
     });
-    const runtimeConfig = new RuntimeConfigStore(runtimeConfigFile, {
-        marketProvider: config.marketProvider,
-        fugleApiKey: config.fugleApiKey,
-    });
+    const runtimeConfig = new RuntimeConfigStore(
+        runtimeConfigFile,
+        {
+            marketProvider: config.marketProvider,
+            fugleApiKey: config.fugleApiKey,
+        },
+        { secretKey: process.env.KAUIK_SECRET_KEY },
+    );
 
     // start on mock market; followMarket below picks the real feed
     const market = new MarketManager();
@@ -63,11 +67,24 @@ async function main(): Promise<void> {
         trading.start(mock, 'mock');
     } else {
         try {
+            if (
+                tradeName === 'mega' &&
+                (!runtimeConfig.get().fugleApiKey ||
+                    runtimeConfig.get().marketProvider !== 'fugle')
+            ) {
+                throw new Error(
+                    '兆豐真實交易必須先設定富果行情，避免使用模擬價格下真實委託',
+                );
+            }
             const creds = resolveBrokerCreds(
                 tradeName,
                 runtimeConfig,
                 undefined,
-                credsComplete(config.broker) ? config.broker : undefined,
+                (tradeName === 'mega'
+                    ? megaCredsComplete(config.broker)
+                    : credsComplete(config.broker))
+                    ? config.broker
+                    : undefined,
             );
             const provider = await buildTradingProvider(
                 tradeName,

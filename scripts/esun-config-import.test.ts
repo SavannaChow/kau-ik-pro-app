@@ -14,6 +14,9 @@ const baseForm: BrokerSetupForm = {
     certPath: '',
     certPass: 'cert-password',
     apiUrl: '',
+    account: '',
+    branchId: '',
+    bridgeToken: '',
 };
 
 test('parseEsunConfigIni reads the official ini sections', () => {
@@ -125,6 +128,9 @@ test('applyEsunConfigToForm fills secrets while preserving typed passwords', () 
         certPath: '',
         certPass: 'cert-password',
         apiUrl: 'https://simulation.esunsec.com.tw/api/v1',
+        account: '',
+        branchId: '',
+        bridgeToken: '',
     });
 });
 

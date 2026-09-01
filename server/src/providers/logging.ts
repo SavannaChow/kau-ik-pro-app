@@ -1,4 +1,4 @@
-type BrokerLogName = 'fubon' | 'nova' | 'esun';
+type BrokerLogName = 'fubon' | 'nova' | 'esun' | 'mega';
 
 export function brokerLoginSuccessMessage(
     broker: BrokerLogName,

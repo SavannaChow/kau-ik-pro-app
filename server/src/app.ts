@@ -16,9 +16,27 @@ import { registerStreamRoutes } from './routes/stream.ts';
 import { registerTriggerRoutes } from './routes/triggers.ts';
 import { registerWatchlistRoutes } from './routes/watchlist.ts';
 import { wireMarketToHub } from './sse/wire-market.ts';
+import { verifyWebBasicAuth, webAuthConfigured } from './web-auth.ts';
 
 export function buildApp(ctx: AppContext): FastifyInstance {
     const app = Fastify({ logger: { level: 'warn' } });
+
+    // A LAN-hosted trading terminal must not be open to every device on the
+    // network. Same-origin browser requests and EventSource reuse the Basic
+    // Auth session established when the page first loads.
+    if (webAuthConfigured()) {
+        app.addHook('onRequest', async (req, reply) => {
+            if (
+                req.method === 'OPTIONS' ||
+                req.url === '/api/v1/health' ||
+                verifyWebBasicAuth(req.headers.authorization)
+            ) {
+                return;
+            }
+            reply.header('WWW-Authenticate', 'Basic realm="Kau-ik Pro"');
+            return reply.code(401).send({ detail: 'authentication required' });
+        });
+    }
 
     // surface provider errors (e.g. broker order rejections) in the
     // {detail} shape the frontend's api.ts fail() reads

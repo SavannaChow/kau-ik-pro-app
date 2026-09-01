@@ -1,7 +1,7 @@
 // server/src/config.ts
 
 export type MarketProviderName = 'mock' | 'fugle';
-export type TradeProviderName = 'mock' | 'fubon' | 'nova' | 'esun';
+export type TradeProviderName = 'mock' | 'fubon' | 'nova' | 'esun' | 'mega';
 export type BrokerName = Exclude<TradeProviderName, 'mock'>;
 
 export interface BrokerCreds {
@@ -16,6 +16,11 @@ export interface BrokerCreds {
     certPass: string;
     /** override the broker API base URL (e.g. Nova test environment) */
     apiUrl: string;
+    /** mega only: seven-digit stock account and four-digit branch */
+    account: string;
+    branchId: string;
+    /** shared Bearer token for the Windows-only MegaAPI bridge */
+    bridgeToken: string;
 }
 
 export interface Config {
@@ -46,6 +51,21 @@ export function envBrokerCreds(
     name: BrokerName,
     env: NodeJS.ProcessEnv = process.env,
 ): BrokerCreds | null {
+    if (name === 'mega') {
+        const mega: BrokerCreds = {
+            idNo: env.MEGA_ID_NO ?? env.MEGA_NATIONAL_ID ?? '',
+            password: env.MEGA_PASSWORD ?? '',
+            apiKey: '',
+            apiSecret: '',
+            certPath: env.MEGA_CERT_PATH ?? '',
+            certPass: env.MEGA_CERT_PASS ?? '',
+            apiUrl: env.MEGA_BRIDGE_URL ?? '',
+            account: env.MEGA_ACCOUNT ?? '',
+            branchId: env.MEGA_BRANCH_ID ?? '',
+            bridgeToken: env.MEGA_BRIDGE_TOKEN ?? '',
+        };
+        return megaCredsComplete(mega) ? mega : null;
+    }
     const creds: BrokerCreds =
         name === 'fubon'
             ? {
@@ -56,6 +76,9 @@ export function envBrokerCreds(
                   certPath: env.FUBON_CERT_PATH ?? '',
                   certPass: env.FUBON_CERT_PASS ?? '',
                   apiUrl: '',
+                  account: '',
+                  branchId: '',
+                  bridgeToken: '',
               }
             : name === 'nova'
               ? {
@@ -66,6 +89,9 @@ export function envBrokerCreds(
                     certPath: env.NOVA_CERT_PATH ?? '',
                     certPass: env.NOVA_CERT_PASS ?? '',
                     apiUrl: env.NOVA_API_URL ?? '',
+                    account: '',
+                    branchId: '',
+                    bridgeToken: '',
                 }
               : {
                     idNo: env.ESUN_ACCOUNT ?? env.ESUN_AID ?? '',
@@ -75,8 +101,27 @@ export function envBrokerCreds(
                     certPath: env.ESUN_CERT_PATH ?? '',
                     certPass: env.ESUN_CERT_PASS ?? '',
                     apiUrl: env.ESUN_API_URL ?? env.ESUN_ENTRY ?? '',
+                    account: '',
+                    branchId: '',
+                    bridgeToken: '',
                 };
     return credsComplete(creds) ? creds : null;
+}
+
+export function megaCredsComplete(
+    c: Partial<BrokerCreds> | undefined | null,
+): boolean {
+    return Boolean(
+        c &&
+            c.idNo &&
+            c.password &&
+            c.account &&
+            c.branchId &&
+            c.certPath &&
+            c.certPass &&
+            c.apiUrl &&
+            c.bridgeToken,
+    );
 }
 
 function pick<T extends string>(
@@ -98,11 +143,13 @@ function pick<T extends string>(
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     return {
         port: Number(env.PORT) || 8080,
-        host: '127.0.0.1',
+        // Desktop keeps the loopback-only default. Containers opt in to
+        // external access with KAUIK_HOST=0.0.0.0.
+        host: env.KAUIK_HOST?.trim() || '127.0.0.1',
         marketProvider: pick(env.MARKET_PROVIDER, ['mock', 'fugle'], 'mock'),
         tradeProvider: pick(
             env.TRADE_PROVIDER,
-            ['mock', 'fubon', 'nova', 'esun'],
+            ['mock', 'fubon', 'nova', 'esun', 'mega'],
             'mock',
         ),
         fugleApiKey: env.FUGLE_API_KEY ?? '',
@@ -114,6 +161,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
             certPath: env.BROKER_CERT_PATH ?? '',
             certPass: env.BROKER_CERT_PASS ?? '',
             apiUrl: env.BROKER_API_URL ?? '',
+            account: env.BROKER_ACCOUNT ?? '',
+            branchId: env.BROKER_BRANCH_ID ?? '',
+            bridgeToken: env.BROKER_BRIDGE_TOKEN ?? '',
         },
     };
 }

@@ -4,7 +4,11 @@
 // trading provider, and points market data at the broker's bundled feed.
 
 import type { FastifyInstance } from 'fastify';
-import { credsComplete, envBrokerCreds } from '../config.ts';
+import {
+    credsComplete,
+    envBrokerCreds,
+    megaCredsComplete,
+} from '../config.ts';
 import type { AppContext } from '../context.ts';
 import {
     DESKTOP_AUTH_HEADER,
@@ -106,25 +110,32 @@ export function registerConfigRoutes(
                     env: Boolean(envBrokerCreds('esun')),
                     saved: credsComplete(saved.esun) || Boolean(metadata.esun),
                 },
+                mega: {
+                    env: Boolean(envBrokerCreds('mega')),
+                    saved:
+                        megaCredsComplete(saved.mega) ||
+                        Boolean(metadata.mega),
+                },
             },
             metadata: {
                 fubon: publicBrokerMetadata(metadata.fubon),
                 nova: publicBrokerMetadata(metadata.nova),
                 esun: publicBrokerMetadata(metadata.esun),
+                mega: publicBrokerMetadata(metadata.mega),
             },
         };
     });
 
     app.post<{
         Body: {
-            provider?: 'fubon' | 'nova' | 'esun' | null;
+            provider?: 'fubon' | 'nova' | 'esun' | 'mega' | null;
         };
     }>('/api/v1/config/trade/default', async (req, reply) => {
         const name = req.body?.provider ?? null;
-        if (name !== null && !['fubon', 'nova', 'esun'].includes(name)) {
+        if (name !== null && !['fubon', 'nova', 'esun', 'mega'].includes(name)) {
             return reply
                 .code(400)
-                .send({ detail: 'provider 需為 fubon | nova | esun | null' });
+                .send({ detail: 'provider 需為 fubon | nova | esun | mega | null' });
         }
         ctx.runtimeConfig.set({ defaultTradeBroker: name });
         return { default_broker: name };
@@ -132,16 +143,16 @@ export function registerConfigRoutes(
 
     app.post<{
         Body: {
-            provider?: 'mock' | 'fubon' | 'nova' | 'esun';
+            provider?: 'fubon' | 'nova' | 'esun' | 'mega';
             cert_path?: string;
             api_url?: string;
         };
     }>('/api/v1/config/trade/metadata', async (req, reply) => {
         const name = req.body?.provider;
-        if (!name || !['fubon', 'nova', 'esun'].includes(name)) {
+        if (!name || !['fubon', 'nova', 'esun', 'mega'].includes(name)) {
             return reply
                 .code(400)
-                .send({ detail: 'provider 需為 fubon | nova | esun' });
+                .send({ detail: 'provider 需為 fubon | nova | esun | mega' });
         }
         const certPath = req.body?.cert_path?.trim();
         if (!certPath) {
@@ -162,7 +173,7 @@ export function registerConfigRoutes(
 
     app.post<{
         Body: {
-            provider?: 'mock' | 'fubon' | 'nova' | 'esun';
+            provider?: 'mock' | 'fubon' | 'nova' | 'esun' | 'mega';
             id_no?: string;
             password?: string;
             api_key?: string;
@@ -170,14 +181,17 @@ export function registerConfigRoutes(
             cert_path?: string;
             cert_pass?: string;
             api_url?: string;
+            account?: string;
+            branch_id?: string;
+            bridge_token?: string;
             persist_metadata?: boolean;
         };
     }>('/api/v1/config/trade', async (req, reply) => {
         const name = req.body?.provider;
-        if (!name || !['mock', 'fubon', 'nova', 'esun'].includes(name)) {
+        if (!name || !['mock', 'fubon', 'nova', 'esun', 'mega'].includes(name)) {
             return reply
                 .code(400)
-                .send({ detail: 'provider 需為 mock | fubon | nova | esun' });
+                .send({ detail: 'provider 需為 mock | fubon | nova | esun | mega' });
         }
 
         if (
@@ -210,6 +224,16 @@ export function registerConfigRoutes(
             };
         }
 
+        if (
+            name === 'mega' &&
+            (!ctx.runtimeConfig.get().fugleApiKey ||
+                ctx.runtimeConfig.get().marketProvider !== 'fugle')
+        ) {
+            return reply.code(400).send({
+                detail: '兆豐真實交易必須先在「行情」設定並連接富果，避免使用模擬行情下真實委託',
+            });
+        }
+
         const creds = resolveBrokerCreds(name, ctx.runtimeConfig, {
             idNo: req.body?.id_no?.trim(),
             password: req.body?.password,
@@ -218,10 +242,19 @@ export function registerConfigRoutes(
             certPath: req.body?.cert_path?.trim(),
             certPass: req.body?.cert_pass,
             apiUrl: req.body?.api_url?.trim(),
+            account: req.body?.account?.trim(),
+            branchId: req.body?.branch_id?.trim(),
+            bridgeToken: req.body?.bridge_token?.trim(),
         });
         if (!creds) {
             const label =
-                name === 'fubon' ? '富邦' : name === 'nova' ? '台新' : '玉山';
+                name === 'fubon'
+                    ? '富邦'
+                    : name === 'nova'
+                      ? '台新'
+                      : name === 'esun'
+                        ? '玉山'
+                        : '兆豐';
             return reply.code(400).send({
                 detail:
                     `${label} 缺少憑證 — 需要 ${name === 'esun' ? '帳號' : '身分證字號'}、` +

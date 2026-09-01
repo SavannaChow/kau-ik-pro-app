@@ -66,7 +66,7 @@ export function migrateRuntimeConfig({
 
         let used = false;
         const legacyMetadata = extractBrokerMetadata(legacy);
-        for (const broker of ['fubon', 'nova', 'esun'] as const) {
+        for (const broker of ['fubon', 'nova', 'esun', 'mega'] as const) {
             if (
                 !hasBrokerMetadata(mergedMetadata[broker]) &&
                 hasBrokerMetadata(legacyMetadata[broker])
@@ -144,7 +144,7 @@ function extractBrokerMetadata(
     config: RuntimeConfigJson,
 ): Partial<Record<BrokerKey, BrokerMetadata>> {
     const metadata: Partial<Record<BrokerKey, BrokerMetadata>> = {};
-    for (const broker of ['fubon', 'nova', 'esun'] as const) {
+    for (const broker of ['fubon', 'nova', 'esun', 'mega'] as const) {
         const direct = normalizeBrokerMetadata(config.brokerMetadata?.[broker]);
         if (hasBrokerMetadata(direct)) {
             metadata[broker] = direct;
@@ -182,12 +182,19 @@ function isTradeProvider(value: unknown): value is TradeProviderName {
         value === 'mock' ||
         value === 'fubon' ||
         value === 'nova' ||
-        value === 'esun'
+        value === 'esun' ||
+        value === 'mega'
     );
 }
 
 function isDefaultBroker(value: unknown): value is BrokerKey | null {
-    return value === null || value === 'fubon' || value === 'nova' || value === 'esun';
+    return (
+        value === null ||
+        value === 'fubon' ||
+        value === 'nova' ||
+        value === 'esun' ||
+        value === 'mega'
+    );
 }
 
 function isMarketProvider(value: unknown): value is 'mock' | 'fugle' {

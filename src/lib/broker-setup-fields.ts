@@ -20,18 +20,30 @@ export const BROKER_LABEL: Record<BrokerName, string> = {
     fubon: '富邦',
     nova: '台新',
     esun: '玉山',
+    mega: '兆豐',
 };
 
 export const BROKER_ACCOUNT_LABEL: Record<BrokerName, string> = {
     fubon: '身分證字號',
     nova: '身分證字號',
     esun: '證券帳號',
+    mega: '身分證字號',
 };
 
 const FIELD_KEYS_BY_BROKER: Record<BrokerName, BrokerSetupFieldKey[]> = {
     fubon: ['idNo', 'password', 'apiKey', 'certPath', 'certPass'],
     nova: ['idNo', 'password', 'certPath', 'certPass', 'apiUrl'],
     esun: ['password', 'certPath', 'certPass'],
+    mega: [
+        'idNo',
+        'password',
+        'account',
+        'branchId',
+        'certPath',
+        'certPass',
+        'apiUrl',
+        'bridgeToken',
+    ],
 };
 
 export function emptyBrokerSetupForm(): BrokerSetupForm {
@@ -43,6 +55,9 @@ export function emptyBrokerSetupForm(): BrokerSetupForm {
         certPath: '',
         certPass: '',
         apiUrl: '',
+        account: '',
+        branchId: '',
+        bridgeToken: '',
     };
 }
 
@@ -78,6 +93,15 @@ export function validateBrokerSetupForm(
 
     if (!value(form.certPass)) {
         errors.certPass = '請填憑證密碼';
+    }
+
+    if (broker === 'mega') {
+        if (!value(form.account)) errors.account = '請填七位數證券帳號';
+        if (!value(form.branchId)) errors.branchId = '請填四位數分公司代碼';
+        if (!value(form.apiUrl)) errors.apiUrl = '請填 Windows bridge URL';
+        if (!value(form.bridgeToken)) {
+            errors.bridgeToken = '請填 Windows bridge token';
+        }
     }
 
     return errors;
@@ -153,11 +177,38 @@ function fieldForKey(
         case 'apiUrl':
             return {
                 key,
-                label: 'API URL',
+                label: broker === 'mega' ? 'Windows Bridge URL' : 'API URL',
                 type: 'text',
-                placeholder: '可選填 API URL',
-                required: false,
+                placeholder:
+                    broker === 'mega'
+                        ? '例如 http://192.168.1.50:8765'
+                        : '可選填 API URL',
+                required: broker === 'mega',
                 advanced: true,
+            };
+        case 'account':
+            return {
+                key,
+                label: '證券帳號',
+                type: 'text',
+                placeholder: '七位數證券帳號',
+                required: true,
+            };
+        case 'branchId':
+            return {
+                key,
+                label: '分公司代碼',
+                type: 'text',
+                placeholder: '四位數分公司代碼',
+                required: true,
+            };
+        case 'bridgeToken':
+            return {
+                key,
+                label: 'Bridge Token',
+                type: 'password',
+                placeholder: 'Windows bridge 共用 token',
+                required: true,
             };
     }
 }

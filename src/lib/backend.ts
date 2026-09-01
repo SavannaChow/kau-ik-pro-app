@@ -76,17 +76,17 @@ export function setMarketSource(body: {
 
 // ---- broker (trading) config ----
 
-export type TradeProviderName = 'mock' | 'fubon' | 'nova' | 'esun';
+export type TradeProviderName = 'mock' | 'fubon' | 'nova' | 'esun' | 'mega';
 
 export interface TradeConfig {
     provider: TradeProviderName;
     default_broker: Exclude<TradeProviderName, 'mock'> | null;
     creds: Record<
-        'fubon' | 'nova' | 'esun',
+        'fubon' | 'nova' | 'esun' | 'mega',
         { env: boolean; saved: boolean }
     >;
     metadata: Record<
-        'fubon' | 'nova' | 'esun',
+        'fubon' | 'nova' | 'esun' | 'mega',
         { cert_path: string; api_url: string } | null
     >;
 }
@@ -114,6 +114,9 @@ export function setTradeSource(body: {
     cert_path?: string;
     cert_pass?: string;
     api_url?: string;
+    account?: string;
+    branch_id?: string;
+    bridge_token?: string;
     persist_metadata?: boolean;
 }) {
     return apiPost<{

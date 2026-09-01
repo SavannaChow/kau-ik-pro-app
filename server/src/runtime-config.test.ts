@@ -80,6 +80,35 @@ await check('writes broker metadata without plaintext secret fields', () => {
     }
 });
 
+await check('encrypts and reloads browser-entered broker credentials', () => {
+    const filePath = tempConfigPath();
+    const secretKey = 'test-only-secret-key-with-enough-entropy';
+    const store = new RuntimeConfigStore(filePath, {}, { secretKey });
+
+    store.set({
+        tradeProvider: 'fubon',
+        brokerCreds: { fubon: fubonCreds },
+    });
+
+    const persistedText = readFileSync(filePath, 'utf8');
+    assert.equal(persistedText.includes('encryptedBrokerCreds'), true);
+    for (const secret of ['A123456789', 'account-pass', 'cert-pass']) {
+        assert.equal(persistedText.includes(secret), false, `${secret} leaked`);
+    }
+
+    const reloaded = new RuntimeConfigStore(filePath, {}, { secretKey });
+    assert.deepEqual(reloaded.get().brokerCreds.fubon, fubonCreds);
+});
+
+await check('ignores encrypted credentials when the key changes', () => {
+    const filePath = tempConfigPath();
+    const store = new RuntimeConfigStore(filePath, {}, { secretKey: 'first-key' });
+    store.set({ brokerCreds: { fubon: fubonCreds } });
+
+    const reloaded = new RuntimeConfigStore(filePath, {}, { secretKey: 'wrong-key' });
+    assert.deepEqual(reloaded.get().brokerCreds, {});
+});
+
 await check('defaults tradeProvider to mock when not explicitly persisted', () => {
     const store = new RuntimeConfigStore(tempConfigPath());
 
