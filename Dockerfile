@@ -35,8 +35,13 @@ ENV NODE_ENV=production \
 
 COPY --from=build /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/server ./server
+# Keep the server source explicit: the runtime starts TypeScript through tsx.
+# This also avoids any Docker directory-copy edge case dropping src/.
+COPY --from=build /app/server/package.json ./server/package.json
+COPY --from=build /app/server/node_modules ./server/node_modules
+COPY --from=build /app/server/src ./server/src
 COPY --from=build /app/dist ./dist
+RUN test -f /app/server/src/index.ts
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
