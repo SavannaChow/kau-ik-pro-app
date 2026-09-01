@@ -41,7 +41,10 @@ COPY --from=build /app/server/package.json ./server/package.json
 COPY --from=build /app/server/node_modules ./server/node_modules
 COPY --from=build /app/server/src ./server/src
 COPY --from=build /app/dist ./dist
-RUN test -f /app/server/src/index.ts
+# Synology runs the container as the NAS account (PUID), not root. Ensure
+# copied application directories remain traversable/readable for that user.
+RUN test -f /app/server/src/index.ts \
+    && chmod -R a+rX /app/server /app/dist /app/node_modules
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
