@@ -27,6 +27,9 @@ const fullCreds: BrokerCreds = {
     certPath: '/private/certs/fubon.p12',
     certPass: 'cert-pass',
     apiUrl: 'https://broker.example.test',
+    account: '',
+    branchId: '',
+    bridgeToken: '',
 };
 
 await check('splitBrokerCreds keeps only non-secret metadata in config shape', () => {
@@ -38,6 +41,9 @@ await check('splitBrokerCreds keeps only non-secret metadata in config shape', (
         'apiKey',
         'apiSecret',
         'certPass',
+        'account',
+        'branchId',
+        'bridgeToken',
     ]) {
         assert.equal(Object.hasOwn(metadata, key), false, `${key} leaked`);
     }
@@ -51,6 +57,9 @@ await check('splitBrokerCreds keeps only non-secret metadata in config shape', (
         apiKey: 'api-key',
         apiSecret: 'api-secret',
         certPass: 'cert-pass',
+        account: '',
+        branchId: '',
+        bridgeToken: '',
     } satisfies BrokerSecrets);
 });
 

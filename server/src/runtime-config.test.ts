@@ -25,6 +25,9 @@ const fubonCreds: BrokerCreds = {
     certPath: '/private/certs/fubon.p12',
     certPass: 'cert-pass',
     apiUrl: 'https://broker.example.test',
+    account: '',
+    branchId: '',
+    bridgeToken: '',
 };
 
 function tempConfigPath() {

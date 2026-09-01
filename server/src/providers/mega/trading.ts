@@ -178,7 +178,7 @@ export class MegaTradingProvider implements TradingProvider {
                           }
                         : undefined,
                     contract: { code: row?.code ?? event.code ?? '' },
-                    status: row ?? {},
+                    status: row ? { ...row } : {},
                     ...(event.operation === 'Deal'
                         ? {
                               code: event.code ?? row?.code,
