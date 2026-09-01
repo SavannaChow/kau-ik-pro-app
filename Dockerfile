@@ -11,6 +11,12 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json server/package.json
 COPY server/vendor server/vendor
 RUN pnpm install --frozen-lockfile
+# @esun/trade loads keytar at module startup.  pnpm may otherwise leave its
+# native addon unbuilt, which makes the installed SDK look like it is missing.
+RUN pnpm rebuild keytar \
+    && test -f /app/node_modules/.pnpm/keytar@7.9.0/node_modules/keytar/build/Release/keytar.node \
+    && cd /app/server \
+    && node -e "import('@esun/trade').then(() => console.log('ESUN_IMPORT_OK'))"
 
 COPY . .
 RUN pnpm build && pnpm --filter kau-ik-pro-server typecheck

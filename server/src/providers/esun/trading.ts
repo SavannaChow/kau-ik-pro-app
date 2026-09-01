@@ -105,10 +105,11 @@ export class EsunTradingProvider implements TradingProvider {
         let mod: { EsunTrade: new (o: unknown) => EsunSdk };
         try {
             mod = await import('@esun/trade' as string);
-        } catch {
+        } catch (err) {
+            const reason =
+                err instanceof Error ? err.message : String(err ?? 'unknown error');
             throw new Error(
-                '找不到 @esun/trade — 請將 esun-trade-<version>.tgz 放入 server/vendor/ 並執行 ' +
-                    'pnpm --filter kau-ik-pro-server add file:vendor/esun-trade-<version>.tgz',
+                `無法載入玉山 SDK (@esun/trade)：${reason}`,
             );
         }
         try {
