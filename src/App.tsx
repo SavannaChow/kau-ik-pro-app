@@ -117,6 +117,7 @@ function BlockBody({
     dockProps,
     onSelectCode,
     refreshTrading,
+    onWatchlistIdChange,
 }: {
     block: Block;
     contract: ContractInfo | null;
@@ -125,10 +126,18 @@ function BlockBody({
     dockProps: React.ComponentProps<typeof BottomDock>;
     onSelectCode: (code: string) => void;
     refreshTrading: () => void;
+    onWatchlistIdChange: (blockId: string, listId: string) => void;
 }) {
     switch (block.type) {
         case 'watchlist':
-            return <Watchlist {...watchlistProps} />;
+            return (
+                <WatchlistBlock
+                    block={block}
+                    selectedCode={watchlistProps.selectedCode}
+                    onSelect={watchlistProps.onSelect}
+                    onWatchlistIdChange={onWatchlistIdChange}
+                />
+            );
         case 'movers':
             return <ScannerPanel onPick={onSelectCode} />;
         case 'dock':
@@ -214,6 +223,41 @@ function BlockBody({
     }
 }
 
+function WatchlistBlock({
+    block,
+    selectedCode,
+    onSelect,
+    onWatchlistIdChange,
+}: {
+    block: Block;
+    selectedCode: string | null;
+    onSelect: (contract: ContractInfo) => void;
+    onWatchlistIdChange: (blockId: string, listId: string) => void;
+}) {
+    const watchlist = useWatchlist({
+        initialListId: block.watchlistId,
+        independent: true,
+        onActiveListChange: (listId) =>
+            onWatchlistIdChange(block.id, listId),
+    });
+
+    return (
+        <Watchlist
+            items={watchlist.items}
+            selectedCode={selectedCode}
+            onSelect={onSelect}
+            onAdd={watchlist.addSymbol}
+            onRemove={watchlist.removeSymbol}
+            lists={watchlist.lists}
+            activeListId={watchlist.activeListId}
+            onSelectList={watchlist.selectList}
+            onCreateList={watchlist.createNamedList}
+            onRenameList={watchlist.renameActiveList}
+            onDeleteList={watchlist.deleteActiveList}
+        />
+    );
+}
+
 function BlockPlaceholder() {
     return <div className={styles.blockPlaceholder}>等待商品…</div>;
 }
@@ -228,6 +272,7 @@ interface BlockViewProps {
     dockProps: React.ComponentProps<typeof BottomDock>;
     onSelectCode: (code: string) => void;
     refreshTrading: () => void;
+    onWatchlistIdChange: (blockId: string, listId: string) => void;
 }
 
 function BlockView(props: BlockViewProps) {
@@ -542,7 +587,15 @@ export default function App() {
                 minH: meta.defaultSize.minH,
             };
             updateWorkspace({
-                blocks: [...workspace.blocks, { id, type, pin: null }],
+                blocks: [
+                    ...workspace.blocks,
+                    {
+                        id,
+                        type,
+                        pin: null,
+                        ...(type === 'watchlist' ? { watchlistId: null } : {}),
+                    },
+                ],
                 layout: [...workspace.layout, item],
             });
         },
@@ -569,6 +622,24 @@ export default function App() {
             });
         },
         [workspace, updateWorkspace],
+    );
+
+    const setBlockWatchlist = useCallback(
+        (id: string, watchlistId: string) => {
+            setWorkspace((current) => {
+                const block = current.blocks.find((b) => b.id === id);
+                if (!block || block.watchlistId === watchlistId) return current;
+                const next = {
+                    ...current,
+                    blocks: current.blocks.map((b) =>
+                        b.id === id ? { ...b, watchlistId } : b,
+                    ),
+                };
+                saveWorkspace(next);
+                return next;
+            });
+        },
+        [],
     );
 
     const resetWorkspace = useCallback(() => {
@@ -737,6 +808,7 @@ export default function App() {
                                     dockProps={dockProps}
                                     onSelectCode={selectByCode}
                                     refreshTrading={refreshTrading}
+                                    onWatchlistIdChange={setBlockWatchlist}
                                 />
                             </div>
                         ))}

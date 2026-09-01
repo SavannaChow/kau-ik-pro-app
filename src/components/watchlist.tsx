@@ -190,6 +190,9 @@ export function Watchlist({
     lists = [],
     activeListId = null,
     onSelectList,
+    onCreateList,
+    onRenameList,
+    onDeleteList,
 }: {
     items: WatchItem[];
     selectedCode: string | null;
@@ -199,6 +202,9 @@ export function Watchlist({
     lists?: { id: string; name: string }[];
     activeListId?: string | null;
     onSelectList?: (id: string) => void;
+    onCreateList?: (name: string) => Promise<unknown>;
+    onRenameList?: (name: string) => Promise<unknown>;
+    onDeleteList?: () => Promise<unknown>;
 }) {
     const [input, setInput] = useState('');
     const [type, setType] = useState<SecurityType>('STK');
@@ -255,10 +261,46 @@ export function Watchlist({
         if (code) return addCode(code, type);
     };
 
+    const activeList = lists.find((l) => l.id === activeListId);
+    const builtInActive = activeList?.name === 'nova-pro-v1';
+    const displayName = (name: string) =>
+        name === 'nova-pro-v1' ? '我的自選' : name;
+
+    const createList = async () => {
+        const name = window.prompt('新自選清單名稱');
+        if (!name?.trim() || !onCreateList) return;
+        try {
+            await onCreateList(name.trim());
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : '新增清單失敗');
+        }
+    };
+
+    const renameList = async () => {
+        if (!activeList || !onRenameList) return;
+        const name = window.prompt('重新命名自選清單', displayName(activeList.name));
+        if (!name?.trim()) return;
+        try {
+            await onRenameList(name.trim());
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : '重新命名失敗');
+        }
+    };
+
+    const deleteList = async () => {
+        if (!activeList || !onDeleteList) return;
+        if (!window.confirm(`確定刪除「${displayName(activeList.name)}」？`)) return;
+        try {
+            await onDeleteList();
+        } catch (err) {
+            window.alert(err instanceof Error ? err.message : '刪除清單失敗');
+        }
+    };
+
     return (
         <>
-            {lists.length > 1 && onSelectList && (
-                <div className={styles.addRow}>
+            {onSelectList && (
+                <div className={styles.listToolbar}>
                     <select
                         className={styles.typeSelect}
                         style={{ flex: 1 }}
@@ -268,10 +310,35 @@ export function Watchlist({
                     >
                         {lists.map((l) => (
                             <option key={l.id} value={l.id}>
-                                {l.name}
+                                {displayName(l.name)}
                             </option>
                         ))}
                     </select>
+                    {onCreateList && (
+                        <button className={panel.btn} title='新增自選清單' onClick={createList}>
+                            ＋
+                        </button>
+                    )}
+                    {onRenameList && (
+                        <button
+                            className={panel.btn}
+                            title={builtInActive ? '內建清單不能重新命名' : '重新命名'}
+                            disabled={builtInActive}
+                            onClick={renameList}
+                        >
+                            ✎
+                        </button>
+                    )}
+                    {onDeleteList && (
+                        <button
+                            className={panel.btn}
+                            title={builtInActive ? '內建清單不能刪除' : '刪除清單'}
+                            disabled={builtInActive || lists.length <= 1}
+                            onClick={deleteList}
+                        >
+                            ×
+                        </button>
+                    )}
                 </div>
             )}
             <div className={panel.panelBody}>

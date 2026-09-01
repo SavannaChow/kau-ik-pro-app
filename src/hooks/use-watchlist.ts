@@ -11,9 +11,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { primeContract } from '../lib/contracts-cache';
 import {
     createWatchlist,
+    deleteWatchlist,
     fetchContract,
     fetchSnapshots,
     fetchWatchlists,
+    renameWatchlist,
     subscribeQuote,
     syncWatchlist,
     type ServerWatchlist,
@@ -39,6 +41,7 @@ const DEFAULT_SYMBOLS: { code: string; type: SecurityType }[] = [
 const STORAGE_KEY = 'sj-pro-watchlist';
 const ACTIVE_KEY = 'sj-pro-watchlist-active';
 const SERVER_LIST_NAME = 'nova-pro-v1';
+const LISTS_CHANGED_EVENT = 'kauik-watchlists-changed';
 
 function loadSaved(): { code: string; type: SecurityType }[] {
     try {
@@ -53,7 +56,14 @@ function loadSaved(): { code: string; type: SecurityType }[] {
     return DEFAULT_SYMBOLS;
 }
 
-export function useWatchlist() {
+export function useWatchlist(options: {
+    initialListId?: string | null;
+    independent?: boolean;
+    onActiveListChange?: (id: string) => void;
+} = {}) {
+    const { initialListId = null, independent = false } = options;
+    const onActiveListChange = useRef(options.onActiveListChange);
+    onActiveListChange.current = options.onActiveListChange;
     const [items, setItems] = useState<WatchItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [lists, setLists] = useState<ServerWatchlist[]>([]);
@@ -113,7 +123,8 @@ export function useWatchlist() {
             serverListId.current = list.id;
             activeIsDefault.current = list.name === SERVER_LIST_NAME;
             setActiveListId(list.id);
-            localStorage.setItem(ACTIVE_KEY, list.id);
+            if (!independent) localStorage.setItem(ACTIVE_KEY, list.id);
+            onActiveListChange.current?.(list.id);
             for (const c of list.contracts) {
                 try {
                     await addSymbol(c.code, c.security_type);
@@ -124,7 +135,7 @@ export function useWatchlist() {
             initDone.current = true;
             setLoading(false);
         },
-        [addSymbol],
+        [addSymbol, independent],
     );
 
     const selectList = useCallback(
@@ -146,6 +157,66 @@ export function useWatchlist() {
         if (fresh) setLists(fresh);
         return fresh ?? lists;
     }, [lists]);
+
+    const createNamedList = useCallback(
+        async (name: string) => {
+            const created = await createWatchlist(name.trim(), []);
+            setLists((prev) => [...prev, created]);
+            await loadList(created);
+            window.dispatchEvent(new Event(LISTS_CHANGED_EVENT));
+            return created;
+        },
+        [loadList],
+    );
+
+    const renameActiveList = useCallback(
+        async (name: string) => {
+            if (!activeListId) return null;
+            const active = lists.find((l) => l.id === activeListId);
+            if (active?.name === SERVER_LIST_NAME) {
+                throw new Error('內建自選清單不能重新命名');
+            }
+            const updated = await renameWatchlist(activeListId, name.trim());
+            setLists((prev) =>
+                prev.map((l) => (l.id === updated.id ? updated : l)),
+            );
+            window.dispatchEvent(new Event(LISTS_CHANGED_EVENT));
+            return updated;
+        },
+        [activeListId, lists],
+    );
+
+    const deleteActiveList = useCallback(async () => {
+        if (!activeListId) return;
+        const active = lists.find((l) => l.id === activeListId);
+        if (active?.name === SERVER_LIST_NAME) {
+            throw new Error('內建自選清單不能刪除');
+        }
+        await deleteWatchlist(activeListId);
+        const remaining = lists.filter((l) => l.id !== activeListId);
+        setLists(remaining);
+        const fallback =
+            remaining.find((l) => l.name === SERVER_LIST_NAME) ?? remaining[0];
+        if (fallback) await loadList(fallback);
+        window.dispatchEvent(new Event(LISTS_CHANGED_EVENT));
+    }, [activeListId, lists, loadList]);
+
+    useEffect(() => {
+        const refresh = () => {
+            void (async () => {
+                const fresh = await fetchWatchlists().catch(() => null);
+                if (!fresh) return;
+                setLists(fresh);
+                if (activeListId && !fresh.some((l) => l.id === activeListId)) {
+                    const fallback =
+                        fresh.find((l) => l.name === SERVER_LIST_NAME) ?? fresh[0];
+                    if (fallback) await loadList(fallback);
+                }
+            })();
+        };
+        window.addEventListener(LISTS_CHANGED_EVENT, refresh);
+        return () => window.removeEventListener(LISTS_CHANGED_EVENT, refresh);
+    }, [activeListId, loadList]);
 
     // persist only after the initial load finished — writing during the
     // load loop races with StrictMode double-mount and truncates the list
@@ -177,8 +248,24 @@ export function useWatchlist() {
                     .then((wl) => {
                         serverListId.current = wl.id;
                         setActiveListId(wl.id);
+                        onActiveListChange.current?.(wl.id);
                     })
-                    .catch(() => undefined);
+                    .catch(async () => {
+                        // Multiple watchlist panels can race while creating the
+                        // first built-in list. Attach to the winner and sync.
+                        const fresh = await fetchWatchlists().catch(() => []);
+                        const existing = fresh.find(
+                            (l) => l.name === SERVER_LIST_NAME,
+                        );
+                        if (!existing) return;
+                        serverListId.current = existing.id;
+                        setActiveListId(existing.id);
+                        onActiveListChange.current?.(existing.id);
+                        setLists(fresh);
+                        await syncWatchlist(existing.id, contracts).catch(
+                            () => undefined,
+                        );
+                    });
             }
         }, 2000);
     }, [items]);
@@ -197,9 +284,11 @@ export function useWatchlist() {
 
             // resume the last-selected list when it still exists and is
             // not the default — server copy is the truth for those
-            const lastActive = localStorage.getItem(ACTIVE_KEY);
+            const lastActive = independent
+                ? initialListId
+                : localStorage.getItem(ACTIVE_KEY);
             const resumed = serverLists.find((l) => l.id === lastActive);
-            if (resumed && resumed.name !== SERVER_LIST_NAME) {
+            if (resumed && (independent || resumed.name !== SERVER_LIST_NAME)) {
                 await loadList(resumed);
                 return;
             }
@@ -212,6 +301,7 @@ export function useWatchlist() {
             if (mine) {
                 serverListId.current = mine.id;
                 setActiveListId(mine.id);
+                onActiveListChange.current?.(mine.id);
                 const hasLocal = !!localStorage.getItem(STORAGE_KEY);
                 if (!hasLocal && mine.contracts.length > 0) {
                     saved = mine.contracts.map((c) => ({
@@ -231,7 +321,7 @@ export function useWatchlist() {
             initDone.current = true;
             setLoading(false);
         })();
-    }, [addSymbol, loadList]);
+    }, [addSymbol, independent, initialListId, loadList]);
 
     return {
         items,
@@ -242,5 +332,9 @@ export function useWatchlist() {
         activeListId,
         selectList,
         refreshLists,
+        createNamedList,
+        renameActiveList,
+        deleteActiveList,
+        activeList: lists.find((l) => l.id === activeListId) ?? null,
     };
 }

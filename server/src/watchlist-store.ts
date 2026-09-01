@@ -46,6 +46,22 @@ export class WatchlistStore {
         return list;
     }
 
+    rename(id: string, name: string): ServerWatchlist | null {
+        const list = this.lists.find((l) => l.id === id);
+        if (!list) return null;
+        list.name = name;
+        this.save();
+        return list;
+    }
+
+    delete(id: string): boolean {
+        const next = this.lists.filter((l) => l.id !== id);
+        if (next.length === this.lists.length) return false;
+        this.lists = next;
+        this.save();
+        return true;
+    }
+
     /** idempotent bulk-import primitive: same name → replace contents */
     upsertByName(
         name: string,

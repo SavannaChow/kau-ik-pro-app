@@ -124,6 +124,14 @@ export const addRow = style({
     flexShrink: 0,
 });
 
+export const listToolbar = style({
+    display: 'flex',
+    gap: vars.space.xs,
+    padding: vars.space.sm,
+    borderBottom: `1px solid ${vars.color.border}`,
+    flexShrink: 0,
+});
+
 export const addInput = style({
     flex: 1,
     minWidth: 0,

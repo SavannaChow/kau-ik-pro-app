@@ -12,9 +12,14 @@ export function registerWatchlistRoutes(
 
     app.post<{
         Body: { name: string; contracts: ServerWatchlist['contracts'] };
-    }>('/api/v1/watchlist', async (req) =>
-        ctx.watchlists.create(req.body.name, req.body.contracts ?? []),
-    );
+    }>('/api/v1/watchlist', async (req, reply) => {
+        const name = req.body?.name?.trim();
+        if (!name) return reply.code(400).send({ detail: '清單名稱不可為空' });
+        if (ctx.watchlists.all().some((l) => l.name === name)) {
+            return reply.code(409).send({ detail: `清單名稱已存在：${name}` });
+        }
+        return ctx.watchlists.create(name, req.body.contracts ?? []);
+    });
 
     // bulk import (e.g. synced from an external watchlist source) —
     // upserts by name so re-imports update in place
@@ -57,5 +62,37 @@ export function registerWatchlistRoutes(
                 .send({ detail: `watchlist not found: ${req.params.id}` });
         }
         return updated;
+    });
+
+    app.patch<{
+        Params: { id: string };
+        Body: { name?: string };
+    }>('/api/v1/watchlist/:id', async (req, reply) => {
+        const name = req.body?.name?.trim();
+        if (!name) return reply.code(400).send({ detail: '清單名稱不可為空' });
+        if (ctx.watchlists.all().some((l) => l.id !== req.params.id && l.name === name)) {
+            return reply.code(409).send({ detail: `清單名稱已存在：${name}` });
+        }
+        const updated = ctx.watchlists.rename(req.params.id, name);
+        if (!updated) {
+            return reply
+                .code(404)
+                .send({ detail: `watchlist not found: ${req.params.id}` });
+        }
+        return updated;
+    });
+
+    app.delete<{
+        Params: { id: string };
+    }>('/api/v1/watchlist/:id', async (req, reply) => {
+        if (ctx.watchlists.all().length <= 1) {
+            return reply.code(409).send({ detail: '至少需保留一個自選清單' });
+        }
+        if (!ctx.watchlists.delete(req.params.id)) {
+            return reply
+                .code(404)
+                .send({ detail: `watchlist not found: ${req.params.id}` });
+        }
+        return { ok: true };
     });
 }

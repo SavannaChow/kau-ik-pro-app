@@ -23,6 +23,8 @@ export interface Block {
     type: BlockType;
     // null → follows the globally selected symbol; string → pinned to a code
     pin: string | null;
+    // watchlist panels remember their independently selected server list
+    watchlistId?: string | null;
 }
 
 export interface Workspace {
@@ -47,7 +49,7 @@ export const BLOCK_META: Record<
     watchlist: {
         label: '自選清單',
         pinnable: false,
-        singleton: true,
+        singleton: false,
         defaultSize: { w: 4, h: 14, minW: 3, minH: 6 },
     },
     movers: {
